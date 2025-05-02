@@ -1,9 +1,9 @@
 {
-  "name": "vue-decorators",
+  "name": "vue3-native-decorators",
   "description": "Vue 3 decorators that provide reactivity for class properties",
-  "repository": "github:Merkushin-AY/vue-decorators",
-  "homepage": "https://github.com/Merkushin-AY/vue-decorators#readme",
-  "bugs": "https://github.com/Merkushin-AY/vue-decorators/issues",
+  "repository": "github:Merkushin-AY/vue3-native-decorators",
+  "homepage": "https://github.com/Merkushin-AY/vue3-native-decorators#readme",
+  "bugs": "https://github.com/Merkushin-AY/vue3-native-decorators/issues",
   "author": {
     "name": "Alexey Merkushin",
     "email": "alexeyyb@mail.ru",
@@ -21,9 +21,9 @@
   "types": "dist/vue-decorators.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/vue-decorators.d.ts",
       "import": "./dist/vue-decorators.es.js",
-      "require": "./dist/vue-decorators.umd.js",
-      "types": "./dist/vue-decorators.d.ts"
+      "require": "./dist/vue-decorators.umd.js"
     }
   },
   "scripts": {

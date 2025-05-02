@@ -1,11 +1,11 @@
-# Vue 3 Decorators
+# Vue 3 Native Decorators
 
 This package implements native JS decorators that provide Vue 3 reactivity to class properties. It allows you to use Vue's Composition API features in a more class-oriented way.
 
 ## Installation
 
 ```bash
-npm install vue-decorators
+npm install vue3-native-decorators
 npm install @babel/plugin-proposal-decorators -D
 ```
 

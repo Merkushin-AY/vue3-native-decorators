@@ -251,12 +251,12 @@ export interface PromiseObject<R> {
     abort: () => void;
 }
 
-type PromiseFunction<R, A extends unknown[] = unknown[]> = PromiseMethod<Awaited<R>, A> & PromiseObject<Awaited<R>>;
-type ObjectWithPromise<T extends PropertyKey, R = unknown> = { [K in T]: PromiseFunction<R> };
+type PromiseFunction<R, A extends any[] = any[]> = PromiseMethod<Awaited<R>, A> & PromiseObject<Awaited<R>>;
+type ObjectWithPromise<T extends PropertyKey, R = any> = { [K in T]: PromiseFunction<R> };
 export type DecoratedPromise<F extends PromiseMethod<any>> = PromiseFunction<Awaited<ReturnType<F>>, Parameters<F>>;
 
 
-const promiseMap = new WeakMap<object, WeakMap<PromiseMethod<unknown>, PromiseObject<any>>>();
+const promiseMap = new WeakMap<object, WeakMap<PromiseMethod<any>, PromiseObject<any>>>();
 
 export function getPromiseData<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
     context: C,
