@@ -237,7 +237,7 @@ export function dWatch<T>(source: WatchSource<T>, options?: WatchOptions) {
 }
 
 // Add these type definitions before the dPromise decorator
-export type PromiseMethod<R> = (...args: unknown[]) => Promise<R>;
+export type PromiseMethod<R, A extends any[] = any[]> = (...args: A) => Promise<R>;
 export interface PromiseObject<R> {
     _isPending: Ref<boolean>;
     _abortListeners: (() => void)[];
@@ -246,13 +246,15 @@ export interface PromiseObject<R> {
     error: ShallowRef<Error | undefined>;
     result: ShallowRef<R | undefined>;
     resolve: ((value: R) => void) | undefined;
-    reject: ((reason?: unknown) => void) | undefined;
+    reject: ((reason?: any) => void) | undefined;
     onAbort: (listener: () => void) => void;
     abort: () => void;
 }
 
-export type PromiseFunction<R> = PromiseMethod<Awaited<R>> & PromiseObject<Awaited<R>>;
+type PromiseFunction<R, A extends unknown[] = unknown[]> = PromiseMethod<Awaited<R>, A> & PromiseObject<Awaited<R>>;
 type ObjectWithPromise<T extends PropertyKey, R = unknown> = { [K in T]: PromiseFunction<R> };
+export type DecoratedPromise<F extends PromiseMethod<any>> = PromiseFunction<Awaited<ReturnType<F>>, Parameters<F>>;
+
 
 const promiseMap = new WeakMap<object, WeakMap<PromiseMethod<unknown>, PromiseObject<any>>>();
 
@@ -325,7 +327,7 @@ export function onAbort<R, T extends PropertyKey, C extends ObjectWithPromise<T,
     promiseObject.onAbort(listener);
 }
 
-export function isPending<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
+export function isPromisePending<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
     context: C,
     targetName: T,
 ): boolean {
@@ -364,7 +366,7 @@ export function dPromise<R, This extends object, Value extends (this: This, ...a
                 promiseObject = makePromiseObject(
                     this as ObjectWithPromise<PropertyKey, R>,
                     context.name,
-                    target as unknown as PromiseFunction<R>,
+                    target as unknown as PromiseFunction<R, Parameters<Value>>,
                 );
             if (promiseObject.promise) return promiseObject.promise;
             promiseObject._isPending.value = true;
