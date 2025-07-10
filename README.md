@@ -46,7 +46,7 @@ Somehow `vite-plugin-babel` doesn't work properly, and Vite has no option to run
 Makes a property accessor `ref`:
 ```typescript
 import { computed } from 'vue';
-import { dRef } from 'vue-decorators';
+import { dRef } from 'vue3-native-decorators';
 
 class SomeClass {
     @dRef accessor someProp: number;
@@ -62,7 +62,7 @@ instance.someProp = 10; // computed will become 11
 ### dShallowRef
 Similar to `dRef` but uses `shallowRef` for better performance with large objects:
 ```typescript
-import { dShallowRef } from 'vue-decorators';
+import { dShallowRef } from 'vue3-native-decorators';
 
 class SomeClass {
     @dShallowRef accessor someProp: object;
@@ -72,7 +72,7 @@ class SomeClass {
 ### dReactive
 Makes a property reactive using Vue's `reactive`:
 ```typescript
-import { dReactive } from 'vue-decorators';
+import { dReactive } from 'vue3-native-decorators';
 
 class SomeClass {
     @dReactive someItems = [];
@@ -86,7 +86,7 @@ console.log(instance.someItems);
 ### dShallowReactive
 Similar to `dReactive` but uses `shallowReactive` for better performance. You should use it when the wrapped object contains unmarked decorated instances:
 ```typescript
-import { dShallowReactive } from 'vue-decorators';
+import { dShallowReactive } from 'vue3-native-decorators';
 
 class SomeClass {
     @dShallowReactive items: SomeOtherDecoratedClass[] = [];
@@ -96,7 +96,7 @@ class SomeClass {
 ### dComputed
 Makes a getter computed:
 ```typescript
-import { dRef, dComputed } from 'vue-decorators';
+import { dRef, dComputed } from 'vue3-native-decorators';
 
 class SomeClass {
     @dRef accessor firstName: string;
@@ -111,7 +111,7 @@ class SomeClass {
 ### dEffect
 Creates a reactive effect that runs when dependencies change:
 ```typescript
-import { dRef, dEffect, stopWatcher, resumeWatcher, pauseWatcher } from 'vue-decorators';
+import { dRef, dEffect, stopWatcher, resumeWatcher, pauseWatcher } from 'vue3-native-decorators';
 
 class SomeClass {
     @dRef accessor count: number;
@@ -143,7 +143,7 @@ stopWatcher(instance, 'logCount');
 ### dWatch
 Watches a reactive source and runs a callback when it changes:
 ```typescript
-import { dRef, dWatch, disposeObjectScope } from 'vue-decorators';
+import { dRef, dWatch, disposeObjectScope } from 'vue3-native-decorators';
 
 class SomeClass {
     @dRef accessor count: number;
@@ -163,11 +163,13 @@ class SomeClass {
 // pause, resume, and stop work the same as for `@dEffect`
 ```
 
+Synchronous changes of watchers dependecies after instance creation will not trigger watchers. Because watcher initialization is microtask, so you have to wait it.
+
 ### dPromise
 Wraps an async method with reactive state management:
 ```typescript
 import { computed } from 'vue';
-import { dPromise, isPending } from 'vue-decorators';
+import { dPromise, isPending } from 'vue3-native-decorators';
 
 class SomeClass {
     @dPromise
@@ -179,10 +181,15 @@ class SomeClass {
 
 const instance = new SomeClass();
 
+
+// isPromisePending(instance.fetchData); - will cause error, because fetchData wasn't called. Use dPromise(true) to avoid errors or call method first.
+
+instance.fetchData();
+
 // Access reactive state
-console.log(isPromisePending(instance, 'fetchData'));
-console.log(getPromiseResult(instance, 'fetchData'));
-console.log(getPromiseError(instance, 'fetchData'));
+console.log(isPromisePending(instance.fetchData));
+console.log(getPromiseResult(instance.fetchData));
+console.log(getPromiseError(instance.fetchData));
 const result = computed(() => {
     getPromiseResult(instance, 'fetchData');
 });
@@ -196,7 +203,7 @@ console.log(instance.fetchData.error);
 To fix type issues, you need to create an interface for the class and use a prefix for the method:
 ```typescript
 import { watch } from 'vue';
-import { dPromise, DecoratedPromise } from 'vue-decorators';
+import { dPromise, DecoratedPromise } from 'vue3-native-decorators';
 
 interface SomeOtherClass {
     fetchData: DecoratedPromise<SomeOtherClass['_$DfetchData']>>
@@ -228,7 +235,7 @@ instance.fetchData.abort();
 Passing a decorated instance into a deep reactive object will cause an error. That's why you need to use shallow API or markRaw instances.
 ```ts
 import { ref, shallowRef, markRaw } from 'vue';
-import { dRef, dReactive, dShallowReactive } from 'vue-decorators';
+import { dRef, dReactive, dShallowReactive } from 'vue3-native-decorators';
 
 class SomeClass {
     @dRef accessor someProp: number;
@@ -266,7 +273,7 @@ class SomeClass {
 Same as in Vue, you have to remove watchers if they aren't needed.
 ```ts
 import { onUnmounted } from 'vue';
-import { dWatch, disposeObjectScope } from 'vue-decorators';
+import { dWatch, disposeObjectScope } from 'vue3-native-decorators';
 class SomeClass {
     @dRef accessor count: number;
 

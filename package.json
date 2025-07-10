@@ -10,37 +10,46 @@
     "url": "https://github.com/Merkushin-AY"
   },
   "private": false,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "license": "MIT",
   "files": [
     "dist"
   ],
-  "main": "dist/vue-decorators.umd.js",
-  "module": "dist/vue-decorators.es.js",
-  "types": "dist/vue-decorators.d.ts",
+  "main": "dist/vue3-native-decorators.umd.js",
+  "module": "dist/vue3-native-decorators.es.js",
+  "types": "dist/vue3-native-decorators.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/vue-decorators.d.ts",
-      "import": "./dist/vue-decorators.es.js",
-      "require": "./dist/vue-decorators.umd.js"
+      "types": "./dist/vue3-native-decorators.d.ts",
+      "import": "./dist/vue3-native-decorators.es.js",
+      "require": "./dist/vue3-native-decorators.umd.js"
     }
   },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
+    "lint:fix": "npx prettier --write \"src/**/*\" \"test/**/*\""
   },
   "peerDependencies": {
     "vue": "^3.5.13"
   },
   "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^7.24.0",
     "@types/node": "^22.15.3",
     "@vitejs/plugin-vue": "^5.2.2",
+    "@vitest/coverage-v8": "^2.1.8",
     "@vue/tsconfig": "^0.7.0",
+    "prettier": "3.6.2",
     "typescript": "~5.7.2",
     "vite": "^6.3.1",
     "vite-plugin-dts": "^4.5.3",
+    "vitest": "^2.1.8",
     "vue": "^3.5.13",
     "vue-tsc": "^2.2.8"
   },

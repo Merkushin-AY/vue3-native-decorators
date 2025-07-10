@@ -177,7 +177,7 @@ export function resumeWatcher<T extends PropertyKey, C extends ObjectWithWatcher
     if (watchHandle) watchHandle.resume();
 }
 
-function dEffectFunction<This extends object, Value extends (this: This, onCleanup?: OnCleanup) => void>(
+function dEffectFunction<This extends object, Value extends (this: This, onCleanup?: OnCleanup) => any>(
     target: Value,
     context: ClassMethodDecoratorContext<This, Value>,
     flush?: WatchEffectOptions['flush'],
@@ -197,12 +197,12 @@ function dEffectFunction<This extends object, Value extends (this: This, onClean
 
 type EffectFunction = typeof dEffectFunction;
 
-export function dEffect<This extends object, Value extends (this: This, onCleanup?: OnCleanup) => void>(
+export function dEffect<This extends object, Value extends (this: This, onCleanup?: OnCleanup) => any>(
     target: Value,
     context: ClassMethodDecoratorContext<This, Value>,
 ): ReturnType<EffectFunction>;
 export function dEffect(flush?: WatchEffectOptions['flush']): EffectFunction;
-export function dEffect<This extends object, Value extends (this: This, onCleanup?: OnCleanup) => void>(
+export function dEffect<This extends object, Value extends (this: This, onCleanup?: OnCleanup) => any>(
     targetOrFlush?: Value | WatchEffectOptions['flush'],
     context?: ClassMethodDecoratorContext<This, Value>,
 ) {
@@ -224,10 +224,11 @@ export function dWatch<T>(source: WatchSource<T>, options?: WatchOptions) {
             queueMicrotask(() => {
                 const scope = makeObjectScope(this);
                 scope.run(() => {
-                    if (typeof source === 'function') {
-                        source = source.bind(this);
+                    let thisSource = source;
+                    if (typeof thisSource === 'function') {
+                        thisSource = thisSource.bind(this);
                     }
-                    const watchHandle = watch(source, target.bind(this), options);
+                    const watchHandle = watch(thisSource, target.bind(this), options);
                     setWatcher(this, target as WatcherFunction, watchHandle);
                 });
             });
@@ -239,150 +240,140 @@ export function dWatch<T>(source: WatchSource<T>, options?: WatchOptions) {
 // Add these type definitions before the dPromise decorator
 export type PromiseMethod<R, A extends any[] = any[]> = (...args: A) => Promise<R>;
 export interface PromiseObject<R> {
-    _isPending: Ref<boolean>;
+    _isDPromise: true;
     _abortListeners: (() => void)[];
+    _isPending: Ref<boolean>;
+    _error: ShallowRef<Error | undefined>;
+    _result: ShallowRef<R | undefined>;
     promise: Promise<R> | undefined;
     get isPending(): boolean;
-    error: ShallowRef<Error | undefined>;
-    result: ShallowRef<R | undefined>;
+    get error(): Error | undefined;
+    get result(): R | undefined;
     resolve: ((value: R) => void) | undefined;
     reject: ((reason?: any) => void) | undefined;
     onAbort: (listener: () => void) => void;
     abort: () => void;
 }
 
-type PromiseFunction<R, A extends any[] = any[]> = PromiseMethod<Awaited<R>, A> & PromiseObject<Awaited<R>>;
-type ObjectWithPromise<T extends PropertyKey, R = any> = { [K in T]: PromiseFunction<R> };
-export type DecoratedPromise<F extends PromiseMethod<any>> = PromiseFunction<Awaited<ReturnType<F>>, Parameters<F>>;
+type DecoratedPromiseFunction<R, A extends any[] = any[]> = PromiseMethod<Awaited<R>, A> & PromiseObject<Awaited<R>>;
+export type DecoratedPromise<F extends PromiseMethod<any>> = DecoratedPromiseFunction<Awaited<ReturnType<F>>, Parameters<F>>;
 
-
-const promiseMap = new WeakMap<object, WeakMap<PromiseMethod<any>, PromiseObject<any>>>();
-
-export function getPromiseData<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
-    context: C,
-    targetName: T,
-): PromiseObject<R> | undefined {
-    const target = context[targetName];
-    return promiseMap.get(context)?.get(target) as PromiseObject<R> | undefined;
-}
-
-function setPromiseObject<R>(context: object, target: PromiseMethod<R>, promiseObject: PromiseObject<R>) {
-    if (!promiseMap.has(context)) {
-        promiseMap.set(context, new WeakMap());
-    }
-    promiseMap.get(context)?.set(target, promiseObject);
-}
-
-function makePromiseObject<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
-    context: C,
-    targetName: T,
-    target: C[T],
-): PromiseObject<R> {
-    let promiseObject: PromiseObject<R> | undefined = getPromiseData(context, targetName);
-    if (promiseObject) return promiseObject;
-
-    promiseObject = {
+function assignPromiseObject<R, T extends object = object>(target: T): T & PromiseObject<R> {
+    const promiseObject = Object.assign(target, {
+        _isDPromise: true,
         promise: undefined,
         _isPending: ref(false),
-        error: shallowRef<Error | undefined>(undefined),
-        result: shallowRef<R | undefined>(undefined),
+        _error: shallowRef<Error | undefined>(undefined),
+        _result: shallowRef<R | undefined>(undefined),
         resolve: undefined,
         reject: undefined,
-        get isPending() {
-            return promiseObject!._isPending.value;
-        },
         _abortListeners: [],
         onAbort: (listener: () => void) => {
-            promiseObject!._abortListeners.push(listener);
+            (target as PromiseObject<R>)._abortListeners!.push(listener);
         },
         abort: () => {
-            abortPromise(promiseObject as PromiseObject<unknown>);
+            abortPromise(target as PromiseObject<unknown>);
         },
-    };
+    }) as T & PromiseObject<R>;
 
-    setPromiseObject(context, target, promiseObject);
+    Object.defineProperty(promiseObject, 'isPending', {
+        get() {
+            return promiseObject._isPending.value;
+        },
+        enumerable: false,
+        configurable: false,
+    });
+
+    Object.defineProperty(promiseObject, 'error', {
+        get() {
+            return promiseObject._error.value;
+        },
+        enumerable: false,
+        configurable: false,
+    });
+
+    Object.defineProperty(promiseObject, 'result', {
+        get() {
+            return promiseObject._result.value;
+        },
+        enumerable: false,
+        configurable: false,
+    });
+
     return promiseObject;
+}
+
+export class AbortError extends Error {
+    constructor() {
+        super('Aborted');
+    }
 }
 
 function abortPromise(promiseObject: PromiseObject<unknown>) {
     if (!promiseObject.isPending) return;
     promiseObject._abortListeners.forEach((listener) => listener());
     promiseObject._abortListeners.length = 0;
-    promiseObject.reject?.(new Error('Aborted'));
+    promiseObject.reject?.(new AbortError());
 }
 
-export function abort<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(context: C, targetName: T) {
-    const promiseObject = getPromiseData<R, T, C>(context, targetName);
-    if (!promiseObject) throw new Error('Promise object not found');
-    abortPromise(promiseObject as PromiseObject<unknown>);
+export function abort(method: (...args: any[]) => Promise<any>) {
+    if (!('_isDPromise' in method) || !method._isDPromise) throw new Error('Promise object not found');
+    abortPromise(method as unknown as PromiseObject<unknown>);
 }
 
-export function onAbort<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
-    context: C,
-    targetName: T,
-    listener: () => void,
-) {
-    const promiseObject = getPromiseData<R, T, C>(context, targetName);
-    if (!promiseObject) throw new Error('Promise object not found');
-    promiseObject.onAbort(listener);
+export function onAbort(method: (...args: any[]) => Promise<any>, listener: () => void) {
+    if (!('_isDPromise' in method) || !method._isDPromise) throw new Error('Promise object not found');
+    (method as unknown as PromiseObject<unknown>).onAbort(listener);
 }
 
-export function isPromisePending<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
-    context: C,
-    targetName: T,
-): boolean {
-    const promiseObject = getPromiseData<R, T, C>(context, targetName);
-    if (!promiseObject) throw new Error('Promise object not found');
-    return promiseObject.isPending;
+export function isPromisePending(method: (...args: any[]) => Promise<any>): boolean {
+    if (!('_isDPromise' in method) || !method._isDPromise) throw new Error('Promise object not found');
+    return (method as unknown as PromiseObject<unknown>).isPending;
 }
 
-export function getPromiseError<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
-    context: C,
-    targetName: T,
-): Error | undefined {
-    const promiseObject = getPromiseData<R, T, C>(context, targetName);
-    if (!promiseObject) throw new Error('Promise object not found');
-    return promiseObject.error.value;
+export function getPromiseError(method: (...args: any[]) => Promise<any>): Error | undefined {
+    if (!('_isDPromise' in method) || !method._isDPromise) throw new Error('Promise object not found');
+    return (method as unknown as PromiseObject<unknown>).error;
 }
 
-export function getPromiseResult<R, T extends PropertyKey, C extends ObjectWithPromise<T, R>>(
-    context: C,
-    targetName: T,
-): R | undefined {
-    const promiseObject = getPromiseData<R, T, C>(context, targetName);
-    if (!promiseObject) throw new Error('Promise object not found');
-    return promiseObject.result.value;
+export function getPromiseResult<R>(method: (...args: any[]) => Promise<R>): R | undefined {
+    if (!('_isDPromise' in method) || !method._isDPromise) throw new Error('Promise object not found');
+    return (method as unknown as PromiseObject<R>).result;
 }
 
-export function dPromise<R, This extends object, Value extends (this: This, ...args: unknown[]) => Promise<R>>(
+export function initPromiseObject<R>(method: (...args: any[]) => Promise<R>): PromiseObject<R> {
+    return assignPromiseObject<R>(method);
+}
+
+function dPromiseFunction<R, This extends object, Value extends (this: This, ...args: any[]) => Promise<any>>(
     target: Value,
     context: ClassMethodDecoratorContext<This, Value>,
+    eagerInit?: boolean,
 ): Value {
     context.addInitializer(function (this: This) {
         let promiseObject: PromiseObject<R>;
 
         function makePromise(this: This, ...args: Parameters<Value>): Promise<R> {
-            if (!promiseObject)
-                promiseObject = makePromiseObject(
-                    this as ObjectWithPromise<PropertyKey, R>,
-                    context.name,
-                    target as unknown as PromiseFunction<R, Parameters<Value>>,
-                );
+            if (!promiseObject) {
+                promiseObject = assignPromiseObject<R>(makePromise);
+            }
+
             if (promiseObject.promise) return promiseObject.promise;
-            promiseObject._isPending.value = true;
-            promiseObject.error.value = undefined;
-            promiseObject.result.value = undefined;
+            
             promiseObject.promise = new Promise<R>((resolve, reject) => {
+                promiseObject._isPending.value = true;
+                promiseObject._error.value = undefined;
+                promiseObject._result.value = undefined;
                 promiseObject.resolve = resolve;
                 promiseObject.reject = reject;
                 target.call(this, ...args).then(resolve, reject);
             })
                 .then((result) => {
-                    promiseObject.result.value = result;
+                    promiseObject._result.value = result;
                     return result;
                 })
                 .catch((error) => {
-                    promiseObject.error.value = error;
+                    promiseObject._error.value = error;
                     throw error;
                 })
                 .finally(() => {
@@ -395,13 +386,42 @@ export function dPromise<R, This extends object, Value extends (this: This, ...a
             return promiseObject.promise;
         }
 
-        let name = context.name;
-        if (typeof name === 'string' && METHOD_PREFIXES.some((prefix) => (name as string).startsWith(prefix))) {
-            name = name.slice(METHOD_PREFIXES[0].length);
+        if (eagerInit) {
+            promiseObject = assignPromiseObject<R>(makePromise);
         }
+
+        let name = context.name;
+        if (typeof name === 'string') {
+            for (const prefix of METHOD_PREFIXES) {
+                if (!name.startsWith(prefix)) continue;
+                name = name.slice(prefix.length);
+                break;
+            }
+        }
+
         // @ts-expect-error - We know this is safe due to the type definitions
         this[name] = makePromise;
     });
 
     return target;
+}
+
+type PromiseFunction = typeof dPromiseFunction;
+
+export function dPromise(eagerInit?: boolean): PromiseFunction;
+export function dPromise<R, This extends object, Value extends (this: This, ...args: any[]) => Promise<R>>(
+    target: Value,
+    context: ClassMethodDecoratorContext<This, Value>,
+): ReturnType<PromiseFunction>;
+export function dPromise<R, This extends object, Value extends (this: This, ...args: any[]) => Promise<R>>(
+    targetOrEagerInit?: Value | boolean,
+    context?: ClassMethodDecoratorContext<This, Value>,
+) {
+    if (context) {
+        return dPromiseFunction(targetOrEagerInit as Value, context);
+    }
+
+    return (target: Value, context: ClassMethodDecoratorContext<This, Value>) => {
+        return dPromiseFunction(target, context, targetOrEagerInit as boolean);
+    };
 }
