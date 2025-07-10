@@ -10,7 +10,7 @@
     "url": "https://github.com/Merkushin-AY"
   },
   "private": false,
-  "version": "0.0.2",
+  "version": "0.0.4",
   "type": "module",
   "license": "MIT",
   "files": [
@@ -34,7 +34,8 @@
     "test:run": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
-    "lint:fix": "npx prettier --write \"src/**/*\" \"test/**/*\""
+    "lint:fix": "npx prettier --write \"src/**/*\" \"test/**/*\"",
+    "build:pub": "npm run build && npm publish"
   },
   "peerDependencies": {
     "vue": "^3.5.13"

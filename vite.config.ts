@@ -8,9 +8,9 @@ export default defineConfig({
   plugins: [vue(), dts({ tsconfigPath: './tsconfig.app.json', rollupTypes: true })],
   build: {
     lib: {
-      name: 'vue-decorators',
+      name: 'vue3-native-decorators',
       entry: resolve(__dirname, 'src/index.ts'),
-      fileName: (format) => `vue-decorators.${format}.js`,
+      fileName: (format) => `vue3-native-decorators.${format}.js`,
     },
     emptyOutDir: true,
     rollupOptions: {
