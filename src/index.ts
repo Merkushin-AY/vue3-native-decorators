@@ -425,3 +425,27 @@ export function dPromise<R, This extends object, Value extends (this: This, ...a
         return dPromiseFunction(target, context, targetOrEagerInit as boolean);
     };
 }
+
+const CONTEXT_KEY = '__v3nd';
+const fallbackGlobalContext: Record<string, any> = {};
+let globalContextGetter: () => Record<string, any>;
+
+export function setGlobalContextGetter(getter: () => Record<string, any>) {
+    globalContextGetter = getter;
+}
+
+function makeGlobalContext() {
+    const globalContext = !!globalContextGetter ? globalContextGetter() : fallbackGlobalContext;
+    if (!(CONTEXT_KEY in globalContext)) globalContext[CONTEXT_KEY] = {};
+    return globalContext;
+}
+
+export function defineGlobalInstance<T>(key: string, init: () => T): () => T {
+    return () => {
+        const globalContext = makeGlobalContext();
+        if (!(key in globalContext[CONTEXT_KEY])) {
+            return globalContext[CONTEXT_KEY][key] = init();
+        }
+        return globalContext[CONTEXT_KEY][key] as T;
+    }
+}
