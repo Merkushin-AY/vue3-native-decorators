@@ -9,8 +9,8 @@ export default defineConfig({
   build: {
     lib: {
       name: 'vue3-native-decorators',
-      entry: resolve(__dirname, 'src/index.ts'),
-      fileName: (format) => `vue3-native-decorators.${format}.js`,
+      entry: [resolve(__dirname, 'src/index.ts'), resolve(__dirname, 'src/serialization.ts')],
+      fileName: (format, entryName) => `${entryName}.${format}.js`,
     },
     emptyOutDir: true,
     rollupOptions: {

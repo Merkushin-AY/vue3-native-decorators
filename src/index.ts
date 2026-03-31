@@ -449,3 +449,4 @@ export function defineGlobalInstance<T>(key: string, init: () => T): () => T {
         return globalContext[CONTEXT_KEY][key] as T;
     }
 }
+
